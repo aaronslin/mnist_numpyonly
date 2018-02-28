@@ -70,48 +70,57 @@ class FeedForward():
 					error = unit.d_input(error, inputFromPrevLayer)
 
 
+"""
+Where I left off (9:30):
+
+ - Chaining gradients together from nn.py modules
+ 	Difficulty: the modules need to know the inputs from previous layers 
+ 	in order to backprop
+ 	Having issues with __super__
+ - Absolutely need to write test cases
+
+"""
 
 
+# class NN_old():
+# 	def __init__(self, fc1, fc2):
 
-class NN_old():
-	def __init__(self, fc1, fc2):
+# 		self.initialize_weights()
+# 		self.loss = self.xentropy
 
-		self.initialize_weights()
-		self.loss = self.xentropy
+# 	def initialize_weights(self):
+# 		self.W1 = np.random.normal(size=(self.inp_size, self.fc1_size))
+# 		self.W2 = np.random.normal(size=(self.fc1_size, self.fc2_size))
+# 		self.W3 = np.random.normal(size=(self.fc2_size, self.out_size))
 
-	def initialize_weights(self):
-		self.W1 = np.random.normal(size=(self.inp_size, self.fc1_size))
-		self.W2 = np.random.normal(size=(self.fc1_size, self.fc2_size))
-		self.W3 = np.random.normal(size=(self.fc2_size, self.out_size))
+# 	def forward(self, input):
+# 		"""
+# 		input has size batch_size X inp_size
+# 		output has size batch_size X out_size
+# 		"""
+# 		fc1 = np.matmul(input, self.W1)
+# 		fc1 = self.relu(fc1)
 
-	def forward(self, input):
-		"""
-		input has size batch_size X inp_size
-		output has size batch_size X out_size
-		"""
-		fc1 = np.matmul(input, self.W1)
-		fc1 = self.relu(fc1)
+# 		fc2 = np.matmul(fc1, self.W2)
+# 		fc2 = self.relu(fc2)
 
-		fc2 = np.matmul(fc1, self.W2)
-		fc2 = self.relu(fc2)
+# 		fc3 = np.matmul(fc2, self.W3)
+# 		output = self.softmax(fc3)
 
-		fc3 = np.matmul(fc2, self.W3)
-		output = self.softmax(fc3)
+# 		return output
 
-		return output
+# 	def backward(self, label, pred):
+# 		loss = self.loss(label, pred)
+# 		pass
 
-	def backward(self, label, pred):
-		loss = self.loss(label, pred)
-		pass
+# 	def relu(self, layer):
+# 		pass
 
-	def relu(self, layer):
-		pass
+# 	def softmax(self, layer):
+# 		pass
 
-	def softmax(self, layer):
-		pass
-
-	def xentropy(self, label, pred):
-		pass
+# 	def xentropy(self, label, pred):
+# 		pass
 
 
 
