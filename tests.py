@@ -1,5 +1,3 @@
-# tests.py
-
 import nn
 from graph import FeedForward
 import numpy as np
@@ -18,7 +16,11 @@ def ____hrule():
 	print "\n **********************************************************\n"
 
 def test1():
-	ff = FeedForward(arch, dims, lossF, learning_rate)
+	"""
+	Not exactly a unit test. A function written to step through and debug
+	forward and backward passes.
+	"""
+	ff = FeedForward(arch, dims, lossF)
 	ff.initialize_weights("uniform")
 
 	input = np.zeros((1, inp_size))
@@ -35,7 +37,7 @@ def test1():
 	____hrule()
 
 
-	ff.backward(loss)
+	ff.backward(loss, learning_rate)
 	____hrule()
 	print "New Weights"
 	for layer in ff.layers:
@@ -45,12 +47,19 @@ def test1():
 	ff.clear_history()
 
 def test_dSoftmax():
+	"""
+	Unit test for nn.Softmax().d_input
+	"""
 	sm = nn.Softmax()
 	output = 0.1*np.array([0, 1, 2, 1, 2, 3]).reshape((2,3))
 	sm.lastOutput = output
 	grads = np.ones(6).reshape((2,3))
 	newGrad = sm.d_input(grads)
+
+
 	"""
+	(Computed by hand)
+
 	Expected Jacobian: (2x3x3)
 		[ [0, 0, 0], [0, 0.09, -0.02], [0, -0.02, 0.16] ]
 		[ [0.09, -0.02, -0.03], [-0.02, 0.16, -0.06], [-0.03, -0.06, 0.21]]
@@ -62,9 +71,9 @@ def test_dSoftmax():
 
 
 
-
-#test1()
-test_dSoftmax()
+if __name__ == "__main__":
+	test1()
+	test_dSoftmax()
 
 
 

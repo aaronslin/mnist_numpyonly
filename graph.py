@@ -2,15 +2,26 @@ import numpy as np
 import nn
 
 class FeedForward():
-	def __init__(self, arch, dims, lossFunc, lr):
+	"""
+	General class for feedforward networks. 
+
+	Assumes that each layer, except the first and last, has one layer feeding in 
+	(the parent layer) it and feeds out into another layer (child layer). Although
+	this architecture is not very flexible, the code can easily be adapted to
+	suit any DAG architecture by allowing multiple parents/children and summing gradients.
+
+	Architecture specification
+	---------------------------
+	arch: the order of layers in the feed-forward network
+	dims: the dimensions of (input, output) in layers with trainable parameters
+			(i.e. only the NNUnit.Linear layers in the current implementation)
+	lossFunc: the loss function to be used
+	"""
+	def __init__(self, arch, dims, lossFunc):
 		self.arch = arch
 		self.depth = len(arch)
 		self.lossFunc = lossFunc()
-		self.learning_rate = lr
 		self.layers = self.setup_architecture(arch, dims)
-
-		# self.lastInput = [None for i in range(self.depth)]
-		# self.lastOutput = [None for i in range(self.depth)]
 
 	def setup_architecture(self, arch, dims):
 		layers = []
@@ -21,7 +32,7 @@ class FeedForward():
 			if layer.hasParams:
 				layer.initialize_dimensions(dim)
 
-			# Set parent and child
+			# Set parent and child of layer
 			layer.parentUnit = previous
 			if index != 0:
 				previous.childUnit = layer
@@ -33,64 +44,36 @@ class FeedForward():
 		self.tail = layers[-1]
 		return layers
 
-	def initialize_weights(self, mode="uniform"):
+	def initialize_weights(self, mode):
 		for layer in self.layers:
 			if layer.hasParams:
 				layer.initialize_weights(mode)
 
 
 	def forward(self, input):
+		# Forward-pass an input through the network
 		output = self.root.forward(input)
 		return output
-		# lastInput = []
-		# lastOutput = []
-
-		# prevInput = input
-		# for layer in self.layers:
-		# 	lastInput.append(prevInput)
-		# 	output = layer.forward(prevInput)
-		# 	lastOutput.append(output)
-		# 	prevInput = output
-
-		# self.lastInput = lastInput
-		# self.lastOutput = lastOutput
 
 	def eval(self, predicted, label):
 		evaluation = self.lossFunc.eval(predicted, label)
 		return evaluation
 
-	def backward(self, loss):
+	def backward(self, loss, learnRate):
+		# Calculate the gradients, starting in the back
 		grads = self.lossFunc.gradient
 		self.tail.backprop(grads)
 
+		# Update the weights
 		for layer in self.layers:
 			if not layer.hasParams:
 				continue
-			layer.update_weights(self.learning_rate)
-
-
-		# prevError = loss
-		# gradients = []
-
-		# for i in reversed(range(self.depth)):
-		# 	layer = self.layers[i]
-		# 	input = self.lastInput[i]
-
-		# 	layer.d_input(prevError, input)
+			layer.update_weights(learnRate)
 
 	def clear_history(self):
 		for layer in self.layers:
 			layer.clear_history()
 		self.lossFunc.zero_grad()
-
-
-
-if __name__ == "__main__":
-	# Not an elegant input format, but whatever
-	# Needs to be checked that these arrays line up
-	pass
-
-
 
 
 

@@ -1,17 +1,19 @@
 import numpy as np
-np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 
+np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 DEBUG_MODE = False
 
 class NNUnit(object):
+	"""
+	General class for NN layers. Implements forwardprop and backprop abstractly, and expects
+	instances to implement a d_input() method needed for backprop.
+	"""
 	def __init__(self, hasParams):
 		self.name="NNUnit"
 		self.parentUnit = None
 		self.childUnit = None
 		self.hasParams = hasParams
 		self.clear_history()
-
-		# Stores dLoss/dUnitOutput
 
 	def initialize_dimensions(self, dim):
 		(inp_size, out_size) = dim
@@ -21,6 +23,8 @@ class NNUnit(object):
 	def clear_history(self):
 		self.lastOutput = None
 		self.lastInput = None
+
+		# Stores dLoss/dUnitOutput, not dLoss/dUnitInput
 		self.lastGrad = None
 
 	def forwardprop(self):
@@ -49,8 +53,17 @@ class NNUnit(object):
 			print self.lastGrad
 			print "................................................."
 
+	def d_input(self):
+		raise NotImplemented
+
 
 class Linear(NNUnit):
+	"""
+	Implementation of a fully-connected linear unit. These are the only layers
+	currently implemented that have trainable parameters. 
+
+	Further modifications can be done to include bias weights.
+	"""
 	def __init__(self):
 		super(Linear, self).__init__(hasParams=True)
 		self.name="NNUnit.Linear"
@@ -69,17 +82,20 @@ class Linear(NNUnit):
 		self.lastInput = input
 		return self.forwardprop()
 
-	def update_weights(self, learning_rate):
+	def update_weights(self, learningRate):
 		input = self.lastInput
 		grad = self.lastGrad
 		weight_grads = np.matmul(input.T, grad)
-		self.weights = self.weights - learning_rate * weight_grads
+		self.weights = self.weights - learningRate * weight_grads
 
 	def d_input(self, grads):
 		chain = self.weights.T
 		return np.matmul(grads, chain)
 
 class Relu(NNUnit):
+	"""
+	Implements a RELU.
+	"""
 	def __init__(self):
 		super(Relu, self).__init__(hasParams=False)
 		self.name="NNUnit.Relu"
@@ -97,9 +113,10 @@ class Relu(NNUnit):
 		chain = np.array(input > 0).astype(np.float32)
 		return grads * chain
 
-
-# Implementation of below is paused until Relu is implemented correctly
 class Softmax(NNUnit):
+	"""
+	Implements a Softmax Unit.
+	"""
 	def __init__(self):
 		super(Softmax, self).__init__(hasParams = False)
 		self.name = "NNUnit.Softmax"
@@ -113,30 +130,37 @@ class Softmax(NNUnit):
 		self.lastOutput = output
 		return self.forwardprop()
 
-
 	def d_input(self, grads):
 		"""
-		TODO: write unit tests
-		Uses the property that dSoftmax(x)/dx = Softmax(x)(1-Softmax(x))
-		"""
+		The gradient for softmax is computed as follows: 
+
+		dLogit_i/dInput_j = - SM[i] * SM[j] 		(for i != j)
+	 	dLogit_i/dInput_i = - SM[i] * SM[i] + SM[i]  
+
+	 	"""
 		out = self.lastOutput
 		s0, s1 = out.shape
 		out1 = out.reshape((s0, s1, 1))
 		out2 = -out.reshape((s0, 1, s1))
-
+ 
 		jacobian = np.matmul(out1, out2)
 
+		# Multiplies (nBatch x [I_{nClasses}]) with (nBatch x nClasses) = (nBatch x nClasses x nClasses)
 		diagonal = np.eye(s1)
 		diagonal = np.repeat(diagonal[np.newaxis,:,:], s0, axis=0)
 		diagonal = diagonal * out1
 		
 		jacobian += diagonal
 
+		# Multiplies a (nBatch x 1 x nClasses) with (nBatch, nClasses, nClasses)
 		newGrad = np.matmul(grads.reshape((s0, 1, s1)), jacobian).reshape((s0, s1))
 		return newGrad
 
 
 class CrossEntropyLoss():
+	"""
+	Implements Cross Entropy Loss.
+	"""
 	def __init__(self):
 		self.zero_grad()
 
@@ -146,12 +170,6 @@ class CrossEntropyLoss():
 			print "Label", label
 
 	def eval(self, pred, label):
-		"""
-		label is one-hot, should be batch_size X out_size
-		pred should be batch_size X out_size
-		output is batch_size X 1
-		"""
-		#print "\t", np.log(pred)
 		losses = label * np.log(pred)
 		loss = -np.sum(losses, axis=1).reshape((-1,1))
 		self.gradient = self.d_pred(loss, label, pred)
@@ -163,10 +181,6 @@ class CrossEntropyLoss():
 
 	def zero_grad(self):
 		self.gradient = 0
-
-if __name__ == "__main__":
-	pass
-
 
 
 
