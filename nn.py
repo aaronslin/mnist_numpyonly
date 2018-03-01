@@ -18,6 +18,11 @@ class NNUnit(object):
 		self.inp_size = inp_size
 		self.out_size = out_size
 
+	def clear_history(self):
+		self.lastOutput = None
+		self.lastInput = None
+		self.lastGrad = None
+
 	def forwardprop(self):
 		self.print_forwardprop()
 		if self.childUnit is not None:
@@ -25,17 +30,18 @@ class NNUnit(object):
 		else: 
 			return self.lastOutput
 
-	def clear_history(self):
-		self.lastOutput = None
-		self.lastInput = None
-		self.lastGrad = None
-
 	def print_forwardprop(self):
 		if DEBUG_MODE:
 			print "Forward:", self.name, "\t", self.lastInput, "\t", self.lastOutput
 			print self.weights if self.hasParams else None
 			print "................................................."
 
+	def backprop(self, grads):
+		self.lastGrad = grads
+		self.print_backprop()
+		newGrad = self.d_input(grads)
+		if self.parentUnit is not None:
+			self.parentUnit.backprop(newGrad)
 
 	def print_backprop(self):
 		if DEBUG_MODE:
@@ -57,7 +63,6 @@ class Linear(NNUnit):
 		elif mode=="random":
 			self.weights = np.random.normal(size=dim)
 
-
 	def forward(self, input):
 		output = np.matmul(input, self.weights)
 		self.lastOutput = output
@@ -70,16 +75,9 @@ class Linear(NNUnit):
 		weight_grads = np.matmul(input.T, grad)
 		self.weights = self.weights - learning_rate * weight_grads
 
-	def d_input(self):
-		return self.weights.T
-
-	def backprop(self, grads):
-		# This code is almost rewritten. Abstract it?
-		self.lastGrad = grads
-		self.print_backprop()
-		newGrad = np.matmul(grads, self.d_input())
-		if self.parentUnit is not None:
-			self.parentUnit.backprop(newGrad)
+	def d_input(self, grads):
+		chain = self.weights.T
+		return np.matmul(grads, chain)
 
 class Relu(NNUnit):
 	def __init__(self):
@@ -94,16 +92,10 @@ class Relu(NNUnit):
 		self.lastOutput = output
 		return self.forwardprop()
 
-	def d_input(self):
+	def d_input(self, grads):
 		input = self.lastInput
-		return np.array(input > 0).astype(np.float32)
-
-	def backprop(self, grads):
-		self.lastGrad = grads
-		self.print_backprop()
-		newGrad = grads * self.d_input()
-		if self.parentUnit is not None:
-			self.parentUnit.backprop(newGrad)
+		chain = np.array(input > 0).astype(np.float32)
+		return grads * chain
 
 
 # Implementation of below is paused until Relu is implemented correctly
@@ -117,32 +109,31 @@ class Softmax(NNUnit):
 		# To prevent softmax explosions
 		expLayer = np.power(np.e, cappedLL)
 		output = expLayer / np.sum(expLayer, axis=1)[:, np.newaxis]
-
-		# print "Softmax"
-		# print input
-		# print cappedLL
-		# print "exp", expLayer
-		# print output
-		# print 
-
 		self.lastInput = input
 		self.lastOutput = output
 		return self.forwardprop()
 
 
-	def d_input(self):
+	def d_input(self, grads):
 		"""
+		TODO: write unit tests
 		Uses the property that dSoftmax(x)/dx = Softmax(x)(1-Softmax(x))
 		"""
 		out = self.lastOutput
-		return (out*(1-out))
+		s0, s1 = out.shape
+		out1 = out.reshape((s0, s1, 1))
+		out2 = -out.reshape((s0, 1, s1))
 
-	def backprop(self, grads):
-		self.lastGrad = grads
-		self.print_backprop()
-		newGrad = grads * self.d_input()
-		if self.parentUnit is not None:
-			self.parentUnit.backprop(newGrad)
+		jacobian = np.matmul(out1, out2)
+
+		diagonal = np.eye(s1)
+		diagonal = np.repeat(diagonal[np.newaxis,:,:], s0, axis=0)
+		diagonal = diagonal * out1
+		
+		jacobian += diagonal
+
+		newGrad = np.matmul(grads.reshape((s0, 1, s1)), jacobian).reshape((s0, s1))
+		return newGrad
 
 
 class CrossEntropyLoss():
