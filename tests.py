@@ -41,5 +41,7 @@ def test1():
 		if layer.hasParams:
 			print layer.name, layer.weights
 
+	ff.clear_history()
+
 
 test1()

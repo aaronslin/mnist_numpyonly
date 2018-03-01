@@ -2,10 +2,10 @@ import numpy as np
 import nn
 
 class FeedForward():
-	def __init__(self, arch, dims, lossF, lr):
+	def __init__(self, arch, dims, lossFunc, lr):
 		self.arch = arch
 		self.depth = len(arch)
-		self.lossF = lossF()
+		self.lossFunc = lossFunc()
 		self.learning_rate = lr
 		self.layers = self.setup_architecture(arch, dims)
 
@@ -40,7 +40,6 @@ class FeedForward():
 
 
 	def forward(self, input):
-		print input
 		output = self.root.forward(input)
 		return output
 		# lastInput = []
@@ -57,11 +56,11 @@ class FeedForward():
 		# self.lastOutput = lastOutput
 
 	def eval(self, predicted, label):
-		evaluation = self.lossF.eval(predicted, label)
+		evaluation = self.lossFunc.eval(predicted, label)
 		return evaluation
 
 	def backward(self, loss):
-		grads = self.lossF.gradient
+		grads = self.lossFunc.gradient
 		self.tail.backprop(grads)
 
 		for layer in self.layers:
@@ -82,7 +81,7 @@ class FeedForward():
 	def clear_history(self):
 		for layer in self.layers:
 			layer.clear_history()
-		self.lossF.zero_grad()
+		self.lossFunc.zero_grad()
 
 
 

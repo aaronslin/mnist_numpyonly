@@ -1,4 +1,7 @@
 import numpy as np
+np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
+
+DEBUG_MODE = False
 
 class NNUnit(object):
 	def __init__(self, hasParams):
@@ -16,9 +19,7 @@ class NNUnit(object):
 		self.out_size = out_size
 
 	def forwardprop(self):
-		print "Forward:", self.name, "\t", self.lastInput, "\t", self.lastOutput
-		print self.weights if self.hasParams else None
-		print "................................................."
+		self.print_forwardprop()
 		if self.childUnit is not None:
 			return self.childUnit.forward(self.lastOutput)
 		else: 
@@ -29,11 +30,18 @@ class NNUnit(object):
 		self.lastInput = None
 		self.lastGrad = None
 
-	def print_back(self):
-		print "Backward:", self.name, "\t", self.lastInput, "\t", self.lastOutput
-		print "\tWeights", self.weights if self.hasParams else None
-		print self.lastGrad
-		print "................................................."
+	def print_forwardprop(self):
+		if DEBUG_MODE:
+			print "Forward:", self.name, "\t", self.lastInput, "\t", self.lastOutput
+			print self.weights if self.hasParams else None
+			print "................................................."
+
+
+	def print_backprop(self):
+		if DEBUG_MODE:
+			print "Backward:", self.name, "\t", self.lastInput, "\t", self.lastOutput
+			print self.lastGrad
+			print "................................................."
 
 
 class Linear(NNUnit):
@@ -68,7 +76,7 @@ class Linear(NNUnit):
 	def backprop(self, grads):
 		# This code is almost rewritten. Abstract it?
 		self.lastGrad = grads
-		self.print_back()
+		self.print_backprop()
 		newGrad = np.matmul(grads, self.d_input())
 		if self.parentUnit is not None:
 			self.parentUnit.backprop(newGrad)
@@ -92,7 +100,7 @@ class Relu(NNUnit):
 
 	def backprop(self, grads):
 		self.lastGrad = grads
-		self.print_back()
+		self.print_backprop()
 		newGrad = grads * self.d_input()
 		if self.parentUnit is not None:
 			self.parentUnit.backprop(newGrad)
@@ -105,8 +113,18 @@ class Softmax(NNUnit):
 		self.name = "NNUnit.Softmax"
 
 	def forward(self, input):
-		expLayer = np.power(np.e, input)
-		output = expLayer / np.sum(expLayer)
+		cappedLL = input - np.max(input, axis=1, keepdims=True)
+		# To prevent softmax explosions
+		expLayer = np.power(np.e, cappedLL)
+		output = expLayer / np.sum(expLayer, axis=1)[:, np.newaxis]
+
+		# print "Softmax"
+		# print input
+		# print cappedLL
+		# print "exp", expLayer
+		# print output
+		# print 
+
 		self.lastInput = input
 		self.lastOutput = output
 		return self.forwardprop()
@@ -114,8 +132,6 @@ class Softmax(NNUnit):
 
 	def d_input(self):
 		"""
-		grads: batch X nClasses
-		Input: batch X nClasses
 		Uses the property that dSoftmax(x)/dx = Softmax(x)(1-Softmax(x))
 		"""
 		out = self.lastOutput
@@ -123,7 +139,7 @@ class Softmax(NNUnit):
 
 	def backprop(self, grads):
 		self.lastGrad = grads
-		self.print_back()
+		self.print_backprop()
 		newGrad = grads * self.d_input()
 		if self.parentUnit is not None:
 			self.parentUnit.backprop(newGrad)
@@ -133,17 +149,22 @@ class CrossEntropyLoss():
 	def __init__(self):
 		self.zero_grad()
 
+	def print_loss(self, pred, label, loss):
+		if DEBUG_MODE:
+			print "Predicted", pred
+			print "Label", label
+
 	def eval(self, pred, label):
 		"""
 		label is one-hot, should be batch_size X out_size
 		pred should be batch_size X out_size
 		output is batch_size X 1
 		"""
+		#print "\t", np.log(pred)
 		losses = label * np.log(pred)
 		loss = -np.sum(losses, axis=1).reshape((-1,1))
 		self.gradient = self.d_pred(loss, label, pred)
-		print "CrossEntropyLoss", pred
-		print "\t", label
+		self.print_loss(pred, label, loss)
 		return loss
 
 	def d_pred(self, loss, label, pred):
@@ -153,13 +174,7 @@ class CrossEntropyLoss():
 		self.gradient = 0
 
 if __name__ == "__main__":
-	X = [Linear, Relu, Linear]
-	print [x== Linear for x in X]
-
-	X = [Linear(1, 2), Relu(), Linear(2, 3), Relu()]
-	Y = [x.forward(np.array([0])) for x in X]
-	Z = [x.getParams() for x in X]
-	print Y
+	pass
 
 
 
