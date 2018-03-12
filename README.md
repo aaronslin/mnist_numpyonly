@@ -10,7 +10,7 @@ To run the script, enter:
 
 ```python main.py```
 
-With the preset parameters, the network trains for <60 seconds and obtains a test accuracy of ~51%.
+With the preset parameters, the network trains for <60 seconds (1000 epochs) and obtains a test accuracy of ~51%. With 10000 epochs, the network obtains a test accuracy of 77%.
 
 ### Modules
 
